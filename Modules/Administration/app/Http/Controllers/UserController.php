@@ -10,10 +10,20 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::paginate(10);
-        return view('administration::users.index', compact('users'));
+        $search = $request->input('search');
+        $perPage = $request->input('per_page', 10);
+
+        $users = User::query()
+            ->when($search, function ($query, $search) {
+                return $query->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return view('administration::users.index', compact('users', 'search', 'perPage'));
     }
 
     public function store(Request $request)
