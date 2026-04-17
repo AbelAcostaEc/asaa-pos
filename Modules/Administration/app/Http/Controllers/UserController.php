@@ -4,6 +4,7 @@ namespace Modules\Administration\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -23,7 +24,9 @@ class UserController extends Controller
             ->paginate($perPage)
             ->appends($request->query());
 
-        return view('administration::users.index', compact('users', 'search', 'perPage'));
+        $roles = Role::all();
+
+        return view('administration::users.index', compact('users', 'roles', 'search', 'perPage'));
     }
 
     public function store(Request $request)
@@ -32,6 +35,8 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
+            'roles' => 'nullable|array',
+            'roles.*' => 'exists:roles,name',
         ]);
 
         $user = User::create([
@@ -40,6 +45,10 @@ class UserController extends Controller
             'password' => Hash::make($validated['password']),
             'is_active' => true,
         ]);
+
+        if (!empty($validated['roles'])) {
+            $user->syncRoles($validated['roles']);
+        }
 
         return response()->json([
             'success' => true,
@@ -54,6 +63,8 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
+            'roles' => 'nullable|array',
+            'roles.*' => 'exists:roles,name',
         ]);
 
         $user->name = $validated['name'];
@@ -64,6 +75,8 @@ class UserController extends Controller
         }
 
         $user->save();
+        
+        $user->syncRoles($validated['roles'] ?? []);
 
         return response()->json([
             'success' => true,

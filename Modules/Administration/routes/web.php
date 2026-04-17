@@ -13,4 +13,7 @@ Route::middleware(['auth', 'verified'])->prefix('administration')->name('adminis
     Route::post('users', [UserController::class, 'store'])->name('users.store');
     Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::patch('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
+
+    // Role CRUD
+    Route::resource('roles', \Modules\Administration\Http\Controllers\RoleController::class)->names('roles');
 });
