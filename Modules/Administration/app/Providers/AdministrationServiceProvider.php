@@ -17,30 +17,24 @@ class AdministrationServiceProvider extends ModuleServiceProvider
      */
     protected string $nameLower = 'administration';
 
-    /**
-     * Command classes to register.
-     *
-     * @var string[]
-     */
     // protected array $commands = [];
 
-    /**
-     * Provider classes to register.
-     *
-     * @var string[]
-     */
     protected array $providers = [
         EventServiceProvider::class,
         RouteServiceProvider::class,
     ];
 
     /**
-     * Define module schedules.
-     * 
-     * @param $schedule
+     * Boot the module services.
+     * Registers translations so __('administration::users.key') works.
      */
-    // protected function configureSchedules(Schedule $schedule): void
-    // {
-    //     $schedule->command('inspire')->hourly();
-    // }
+    public function boot(): void
+    {
+        parent::boot();
+
+        $this->loadTranslationsFrom(
+            __DIR__ . '/../../resources/lang',
+            'administration'
+        );
+    }
 }
