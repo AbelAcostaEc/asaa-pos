@@ -182,7 +182,7 @@
                 <div class="mb-6 flex items-center justify-between">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white"
                         x-text="editMode ? '{{ __('administration::users.modal_edit') }}' : '{{ __('administration::users.modal_create') }}'"></h2>
-                    <button @click="$dispatch('close-modal', 'user-modal')" class="text-gray-400 hover:text-gray-500">
+                    <button type="button" @click="$dispatch('close-modal', 'user-modal')" class="text-gray-400 hover:text-gray-500">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -369,31 +369,59 @@
                         this.$dispatch('open-modal', 'user-modal');
                     },
 
+                    buildFormData() {
+                        const payload = new FormData();
+
+                        payload.append('name', this.formData.name ?? '');
+                        payload.append('email', this.formData.email ?? '');
+
+                        if (this.formData.password) {
+                            payload.append('password', this.formData.password);
+                        }
+
+                        (this.formData.roles || []).forEach((role, index) => {
+                            payload.append(`roles[${index}]`, role);
+                        });
+
+                        if (this.editMode) {
+                            payload.append('_method', 'PUT');
+                        }
+
+                        return payload;
+                    },
+
                     async submitForm() {
                         this.loading = true;
                         this.errors = {};
                         const url = this.editMode ? `/administration/users/${this.formData.id}` : '/administration/users';
-                        const method = this.editMode ? 'PUT' : 'POST';
                         try {
                             const response = await fetch(url, {
-                                method,
+                                method: 'POST',
                                 headers: {
-                                    'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                                     'Accept': 'application/json',
                                 },
-                                body: JSON.stringify(this.formData),
+                                body: this.buildFormData(),
                             });
-                            const data = await response.json();
+
+                            const contentType = response.headers.get('content-type') || '';
+                            const data = contentType.includes('application/json')
+                                ? await response.json()
+                                : { message: 'La respuesta del servidor no fue valida.' };
+
                             if (response.ok) {
                                 this.$dispatch('close-modal', 'user-modal');
                                 this.showToast(data.message);
                                 setTimeout(() => window.location.reload(), 1000);
                             } else {
                                 this.errors = data.errors || {};
+                                if (data.message && Object.keys(this.errors).length === 0) {
+                                    this.showToast(data.message);
+                                }
                             }
                         } catch (e) {
                             console.error(e);
+                            this.showToast('No se pudo guardar el usuario.');
                         } finally {
                             this.loading = false;
                         }

@@ -95,7 +95,7 @@
                 <div class="mb-6 flex items-center justify-between">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white"
                         x-text="editMode ? '{{ __('administration::roles.modal_edit') }}' : '{{ __('administration::roles.modal_create') }}'"></h2>
-                    <button @click="$dispatch('close-modal', 'role-modal')" class="text-gray-400 hover:text-gray-500">
+                    <button type="button" @click="$dispatch('close-modal', 'role-modal')" class="text-gray-400 hover:text-gray-500">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -235,31 +235,57 @@
                         this.$dispatch('open-modal', 'role-modal');
                     },
 
+                    buildFormData() {
+                        const payload = new FormData();
+
+                        payload.append('name', this.formData.name ?? '');
+
+                        (this.formData.permissions || []).forEach((permission, index) => {
+                            payload.append(`permissions[${index}]`, permission);
+                        });
+
+                        if (this.editMode) {
+                            payload.append('_method', 'PUT');
+                        }
+
+                        return payload;
+                    },
+
                     async submitForm() {
                         this.loading = true;
                         this.errors = {};
-                        const url    = this.editMode ? `/administration/roles/${this.formData.id}` : '/administration/roles';
-                        const method = this.editMode ? 'PUT' : 'POST';
+                        const url = this.editMode ? `/administration/roles/${this.formData.id}` : '/administration/roles';
                         try {
                             const response = await fetch(url, {
-                                method,
+                                method: 'POST',
                                 headers: {
-                                    'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                                     'Accept': 'application/json',
                                 },
-                                body: JSON.stringify(this.formData),
+                                body: this.buildFormData(),
                             });
-                            const data = await response.json();
+
+                            const contentType = response.headers.get('content-type') || '';
+                            const data = contentType.includes('application/json')
+                                ? await response.json()
+                                : { message: 'La respuesta del servidor no fue valida.' };
+
                             if (response.ok) {
                                 this.$dispatch('close-modal', 'role-modal');
                                 this.showToast(data.message);
                                 setTimeout(() => window.location.reload(), 1000);
                             } else {
                                 this.errors = data.errors || {};
+                                if (data.message && Object.keys(this.errors).length === 0) {
+                                    this.showToast(data.message);
+                                }
                             }
-                        } catch (e) { console.error(e); }
-                        finally { this.loading = false; }
+                        } catch (e) {
+                            console.error(e);
+                            this.showToast('No se pudo guardar el rol.');
+                        } finally {
+                            this.loading = false;
+                        }
                     },
 
                     confirmDelete(id) {
