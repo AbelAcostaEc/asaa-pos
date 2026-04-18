@@ -1,10 +1,11 @@
 @php
+    $supportedLocales = config('app.supported_locales', ['es' => 'Espanol', 'en' => 'English']);
     $navGroups = [
         [
-            'label' => 'General',
+            'label' => __('layout.group_general'),
             'items' => [
                 [
-                    'label' => 'Dashboard',
+                    'label' => __('layout.nav_dashboard'),
                     'route' => route('administration.dashboard'),
                     'active' => request()->routeIs('administration.dashboard'),
                     'icon' => 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
@@ -12,16 +13,16 @@
             ],
         ],
         [
-            'label' => 'Administracion',
+            'label' => __('layout.group_administration'),
             'items' => [
                 [
-                    'label' => 'Usuarios',
+                    'label' => __('layout.nav_users'),
                     'route' => route('administration.users.index'),
                     'active' => request()->routeIs('administration.users.*'),
                     'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
                 ],
                 [
-                    'label' => 'Roles',
+                    'label' => __('layout.nav_roles'),
                     'route' => route('administration.roles.index'),
                     'active' => request()->routeIs('administration.roles.*'),
                     'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.952 11.952 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
@@ -29,10 +30,10 @@
             ],
         ],
         [
-            'label' => 'Sistema',
+            'label' => __('layout.group_system'),
             'items' => [
                 [
-                    'label' => 'Ajustes',
+                    'label' => __('layout.nav_settings'),
                     'route' => '#',
                     'active' => false,
                     'icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
@@ -43,7 +44,7 @@
 @endphp
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ sidebarOpen: false, darkMode: localStorage.getItem('darkMode') === 'true', profileOpen: false }" :class="{ 'dark': darkMode }">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ sidebarOpen: false, sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true', darkMode: localStorage.getItem('darkMode') === 'true', profileOpen: false }" :class="{ 'dark': darkMode }">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -73,32 +74,45 @@
     <div class="flex min-h-screen overflow-hidden p-3 lg:p-4">
         <div x-show="sidebarOpen" @click="sidebarOpen = false" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-sm lg:hidden"></div>
 
-        <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'" class="app-shell-panel fixed inset-y-3 left-3 z-40 flex w-[290px] transform flex-col rounded-[28px] transition duration-300 lg:static lg:inset-auto lg:translate-x-0">
+        <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+               :style="sidebarCollapsed ? 'width: 104px; min-width: 104px;' : 'width: 290px; min-width: 290px;'"
+               class="app-shell-panel fixed inset-y-3 left-3 z-40 flex w-[290px] transform flex-col rounded-[28px] transition-all duration-300 lg:static lg:inset-auto lg:translate-x-0">
             <div class="border-b border-slate-200/70 px-6 py-6 dark:border-slate-800/80">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3" :class="{ 'justify-center': sidebarCollapsed }">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgb(var(--color-primary))] text-base font-black text-white shadow-lg shadow-[rgb(var(--color-primary))]/25">AP</div>
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400 dark:text-slate-500">Template</p>
+                    <div x-show="!sidebarCollapsed" x-transition.opacity>
+                        <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400 dark:text-slate-500">{{ __('layout.template_badge') }}</p>
                         <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">{{ config('app.name', 'ASAA POS') }}</h1>
                     </div>
                 </div>
-                <p class="mt-4 text-sm leading-6 app-shell-muted">Base administrativa reusable con sidebar, topbar, superficies translúcidas y sistema global de notificaciones.</p>
+                <p x-show="!sidebarCollapsed" x-transition.opacity class="mt-4 text-sm leading-6 app-shell-muted">{{ __('layout.template_description') }}</p>
+                <button type="button"
+                        @click="sidebarCollapsed = !sidebarCollapsed; localStorage.setItem('sidebarCollapsed', sidebarCollapsed)"
+                        :title="sidebarCollapsed ? '{{ __('layout.expand_sidebar') }}' : '{{ __('layout.collapse_sidebar') }}'"
+                        class="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600 transition hover:bg-slate-900 hover:text-white dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-100 dark:hover:text-slate-900">
+                    <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-180': sidebarCollapsed }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span x-show="!sidebarCollapsed" x-transition.opacity>{{ __('layout.collapse_sidebar') }}</span>
+                </button>
             </div>
 
             <nav class="flex-1 space-y-6 overflow-y-auto px-4 py-5">
                 @foreach($navGroups as $group)
                     <div>
-                        <p class="px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">{{ $group['label'] }}</p>
+                        <p x-show="!sidebarCollapsed" x-transition.opacity class="px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">{{ $group['label'] }}</p>
                         <div class="mt-2 space-y-1.5">
                             @foreach($group['items'] as $item)
                                 <a href="{{ $item['route'] }}"
-                                   class="group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-all {{ $item['active'] ? 'bg-[rgb(var(--color-primary))]/12 text-[rgb(var(--color-primary))] shadow-sm ring-1 ring-[rgb(var(--color-primary))]/15' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white' }}">
+                                   :title="sidebarCollapsed ? '{{ $item['label'] }}' : ''"
+                                   class="group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-all {{ $item['active'] ? 'bg-[rgb(var(--color-primary))]/12 text-[rgb(var(--color-primary))] shadow-sm ring-1 ring-[rgb(var(--color-primary))]/15' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white' }}"
+                                   :class="{ 'justify-center': sidebarCollapsed }">
                                     <span class="flex h-10 w-10 items-center justify-center rounded-2xl {{ $item['active'] ? 'bg-[rgb(var(--color-primary))] text-white shadow-lg shadow-[rgb(var(--color-primary))]/20' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-900 group-hover:text-white dark:bg-slate-900 dark:text-slate-400 dark:group-hover:bg-slate-100 dark:group-hover:text-slate-900' }}">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="{{ $item['icon'] }}"></path>
                                         </svg>
                                     </span>
-                                    <span class="flex-1">{{ $item['label'] }}</span>
+                                    <span x-show="!sidebarCollapsed" x-transition.opacity class="flex-1">{{ $item['label'] }}</span>
                                 </a>
                             @endforeach
                         </div>
@@ -106,15 +120,15 @@
                 @endforeach
             </nav>
 
-            <div class="border-t border-slate-200/70 p-4 dark:border-slate-800/80">
+            <div x-show="!sidebarCollapsed" x-transition.opacity class="border-t border-slate-200/70 p-4 dark:border-slate-800/80">
                 <div class="rounded-3xl bg-slate-950 px-4 py-4 text-white dark:bg-white dark:text-slate-900">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-white/55 dark:text-slate-500">Quick Tip</p>
-                    <p class="mt-2 text-sm leading-6">Usa este shell como base y cambia sólo branding, menú y colores para reutilizarlo en cualquier admin panel.</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-white/55 dark:text-slate-500">{{ __('layout.quick_tip') }}</p>
+                    <p class="mt-2 text-sm leading-6">{{ __('layout.quick_tip_body') }}</p>
                 </div>
             </div>
         </aside>
 
-        <div class="flex min-w-0 flex-1 flex-col lg:pl-4">
+        <div class="flex min-w-0 flex-1 flex-col lg:pl-4 transition-all duration-300">
             <header class="app-shell-panel sticky top-3 z-20 mb-4 flex min-h-[84px] items-center justify-between rounded-[28px] px-4 py-4 lg:px-6">
                 <div class="flex min-w-0 items-center gap-4">
                     <button @click="sidebarOpen = true" class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-900 hover:text-white dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-100 dark:hover:text-slate-900 lg:hidden">
@@ -124,14 +138,29 @@
                         @isset($header)
                             <h2 class="truncate text-2xl font-black tracking-tight text-slate-900 dark:text-white">{{ $header }}</h2>
                         @endisset
-                        <p class="mt-1 hidden text-sm app-shell-muted md:block">Un layout más limpio, portable y listo para crecer con nuevos módulos.</p>
+                        <p class="mt-1 hidden text-sm app-shell-muted md:block">{{ __('layout.header_subtitle') }}</p>
                     </div>
                 </div>
 
                 <div class="flex items-center gap-2 lg:gap-3">
+                    <form method="POST" action="{{ route('locale.update') }}" class="hidden md:block">
+                        @csrf
+                        <label class="sr-only" for="locale-select">{{ __('layout.language') }}</label>
+                        <div class="flex items-center gap-2 rounded-2xl border border-slate-200/70 bg-white/70 px-3 py-2.5 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+                            <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9A18.022 18.022 0 016.5 20c-1.207 0-2.378-.119-3.5-.347m13.5-6.653c1.207 0 2.378.119 3.5.347M14 5l7 7-7 7M6 12h.01"></path>
+                            </svg>
+                            <select id="locale-select" name="locale" onchange="this.form.submit()" class="bg-transparent pr-6 text-sm font-medium outline-none">
+                                @foreach($supportedLocales as $localeCode => $localeLabel)
+                                    <option value="{{ $localeCode }}" @selected(app()->getLocale() === $localeCode)>{{ $localeLabel }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </form>
+
                     <div class="hidden items-center gap-3 rounded-2xl border border-slate-200/70 bg-white/70 px-4 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400 xl:flex">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <span>Espacio para búsqueda global o acciones rápidas</span>
+                        <span>{{ __('layout.search_placeholder') }}</span>
                     </div>
 
                     <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-900 hover:text-white dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-100 dark:hover:text-slate-900">
@@ -143,7 +172,7 @@
                         <button @click="profileOpen = !profileOpen" class="flex items-center gap-3 rounded-[22px] border border-slate-200/70 bg-white/75 px-3 py-2 transition hover:border-[rgb(var(--color-primary))]/25 hover:bg-white dark:border-slate-800 dark:bg-slate-900/75 dark:hover:bg-slate-900">
                             <div class="hidden text-right sm:block">
                                 <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ auth()->user()->name ?? 'Visitante' }}</p>
-                                <p class="text-xs app-shell-muted">Administrador</p>
+                                <p class="text-xs app-shell-muted">{{ __('layout.admin_role') }}</p>
                             </div>
                             <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgb(var(--color-primary))]/12 font-bold text-[rgb(var(--color-primary))] ring-1 ring-[rgb(var(--color-primary))]/10">
                                 {{ strtoupper(substr(auth()->user()->name ?? 'V', 0, 1)) }}
@@ -176,7 +205,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
                                     </span>
-                                    <span>Perfil</span>
+                                    <span>{{ __('layout.profile') }}</span>
                                 </a>
 
                                 <form method="POST" action="{{ route('logout') }}">
@@ -188,7 +217,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                                             </svg>
                                         </span>
-                                        <span>Cerrar sesión</span>
+                                        <span>{{ __('layout.logout') }}</span>
                                     </button>
                                 </form>
                             </div>
