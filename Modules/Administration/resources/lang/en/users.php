@@ -45,4 +45,8 @@ return [
     'btn_confirm_disable'   => 'Confirm Disable',
     'btn_confirm_enable'    => 'Confirm Enable',
 
+    // Messages
+    'msg_invalid_response' => 'The server response was invalid.',
+    'msg_save_error'       => 'The user could not be saved.',
+
 ];

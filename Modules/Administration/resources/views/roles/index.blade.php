@@ -269,18 +269,6 @@
             </div>
         </x-pos.modal>
 
-        {{-- ════ Toast ═══════════════════════════════════════════════ --}}
-        <div x-show="toast.show"
-             style="display:none;"
-             class="fixed bottom-8 right-8 z-50 flex items-center gap-3 rounded-xl bg-gray-900 p-4 text-white shadow-2xl">
-             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-success/20 text-success">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-            </div>
-            <p class="text-sm font-medium" x-text="toast.message"></p>
-        </div>
-
     </div>
 
     @push('scripts')
@@ -291,7 +279,6 @@
                     loading: false,
                     formData: { id: null, name: '', permissions: [] },
                     errors: {},
-                    toast: { show: false, message: '' },
                     filters: {
                         search: @js($search ?? ''),
                         per_page: @js($perPage ?? 10),
@@ -385,17 +372,17 @@
 
                             if (response.ok) {
                                 this.$dispatch('close-modal', 'role-modal');
-                                this.showToast(data.message);
+                                this.notify(data.message);
                                 setTimeout(() => window.location.reload(), 1000);
                             } else {
                                 this.errors = data.errors || {};
                                 if (data.message && Object.keys(this.errors).length === 0) {
-                                    this.showToast(data.message);
+                                    this.notify(data.message, 'warning');
                                 }
                             }
                         } catch (e) {
                             console.error(e);
-                            this.showToast(this.messages.saveError);
+                            this.notify(this.messages.saveError, 'danger');
                         } finally {
                             this.loading = false;
                         }
@@ -418,21 +405,19 @@
                             const data = await response.json();
                             if (response.ok) {
                                 this.$dispatch('close-modal', 'confirm-delete');
-                                this.showToast(data.message);
+                                this.notify(data.message);
                                 setTimeout(() => window.location.reload(), 1000);
                             } else {
-                                this.showToast(data.message || this.messages.deleteError);
+                                this.notify(data.message || this.messages.deleteError, 'danger');
                             }
                         } catch (e) {
                             console.error(e);
-                            this.showToast(this.messages.deleteError);
+                            this.notify(this.messages.deleteError, 'danger');
                         }
                     },
 
-                    showToast(msg) {
-                        this.toast.message = msg;
-                        this.toast.show = true;
-                        setTimeout(() => this.toast.show = false, 3000);
+                    notify(message, type = 'success') {
+                        window.dispatchToast({ type, message });
                     },
                 };
             }

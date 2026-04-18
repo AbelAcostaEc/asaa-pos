@@ -280,24 +280,6 @@
             </div>
         </x-pos.modal>
 
-        {{-- ════ Toast ═══════════════════════════════════════════════ --}}
-        <div x-show="toast.show"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="translate-y-10 opacity-0"
-            x-transition:enter-end="translate-y-0 opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="translate-y-0 opacity-100"
-            x-transition:leave-end="translate-y-10 opacity-0"
-            class="fixed bottom-8 right-8 z-50 flex items-center gap-3 rounded-xl bg-gray-900 p-4 text-white shadow-2xl"
-            style="display:none;">
-            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-success/20 text-success">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-            </div>
-            <p class="text-sm font-medium" x-text="toast.message"></p>
-        </div>
-
     </div>{{-- /x-data --}}
 
     @push('scripts')
@@ -314,13 +296,13 @@
                         roles: []
                     },
                     errors: {},
-                    toast: {
-                        show: false,
-                        message: ''
-                    },
                     filters: {
                         search: @js($search ?? ''),
                         per_page: @js($perPage ?? 10),
+                    },
+                    messages: {
+                        invalidResponse: @js(__('administration::users.msg_invalid_response')),
+                        saveError: @js(__('administration::users.msg_save_error')),
                     },
                     confirmAction: {
                         id: null,
@@ -407,21 +389,21 @@
                             const contentType = response.headers.get('content-type') || '';
                             const data = contentType.includes('application/json')
                                 ? await response.json()
-                                : { message: 'La respuesta del servidor no fue valida.' };
+                                : { message: this.messages.invalidResponse };
 
                             if (response.ok) {
                                 this.$dispatch('close-modal', 'user-modal');
-                                this.showToast(data.message);
+                                this.notify(data.message);
                                 setTimeout(() => window.location.reload(), 1000);
                             } else {
                                 this.errors = data.errors || {};
                                 if (data.message && Object.keys(this.errors).length === 0) {
-                                    this.showToast(data.message);
+                                    this.notify(data.message, 'warning');
                                 }
                             }
                         } catch (e) {
                             console.error(e);
-                            this.showToast('No se pudo guardar el usuario.');
+                            this.notify(this.messages.saveError, 'danger');
                         } finally {
                             this.loading = false;
                         }
@@ -447,7 +429,7 @@
                             const data = await response.json();
                             if (response.ok) {
                                 this.$dispatch('close-modal', 'confirm-disable');
-                                this.showToast(data.message);
+                                this.notify(data.message);
                                 setTimeout(() => window.location.reload(), 1000);
                             }
                         } catch (e) {
@@ -466,7 +448,7 @@
                             });
                             const data = await response.json();
                             if (response.ok) {
-                                this.showToast(data.message);
+                                this.notify(data.message);
                                 setTimeout(() => window.location.reload(), 500);
                             }
                         } catch (e) {
@@ -474,10 +456,8 @@
                         }
                     },
 
-                    showToast(msg) {
-                        this.toast.message = msg;
-                        this.toast.show = true;
-                        setTimeout(() => this.toast.show = false, 3000);
+                    notify(message, type = 'success') {
+                        window.dispatchToast({ type, message });
                     },
                 };
             }

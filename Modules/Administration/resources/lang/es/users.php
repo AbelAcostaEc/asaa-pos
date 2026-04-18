@@ -47,4 +47,8 @@ return [
     'btn_confirm_disable'   => 'Confirmar Deshabilitar',
     'btn_confirm_enable'    => 'Confirmar Habilitar',
 
+    // ── Mensajes ──────────────────────────────────────────────────────
+    'msg_invalid_response' => 'La respuesta del servidor no fue válida.',
+    'msg_save_error'       => 'No se pudo guardar el usuario.',
+
 ];
