@@ -152,9 +152,16 @@
                 loading: false,
                 editingId: null,
                 errors: {},
+                filters: {
+                    search: '',
+                    per_page: 10,
+                },
                 formData: {
                     name: '',
                     abbreviation: ''
+                },
+                applyFilters() {
+                    // Placeholder for filtering logic
                 },
                 openCreateModal() {
                     this.editingId = null;
