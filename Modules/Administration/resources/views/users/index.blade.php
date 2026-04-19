@@ -182,7 +182,7 @@
                 <div class="mb-6 flex items-center justify-between">
                     <h2 class="text-xl font-bold text-gray-900 dark:text-white"
                         x-text="editMode ? '{{ __('administration::users.modal_edit') }}' : '{{ __('administration::users.modal_create') }}'"></h2>
-                    <button @click="$dispatch('close-modal', 'user-modal')" class="text-gray-400 hover:text-gray-500">
+                    <button type="button" @click="$dispatch('close-modal', 'user-modal')" class="text-gray-400 hover:text-gray-500">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -280,24 +280,6 @@
             </div>
         </x-pos.modal>
 
-        {{-- ════ Toast ═══════════════════════════════════════════════ --}}
-        <div x-show="toast.show"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="translate-y-10 opacity-0"
-            x-transition:enter-end="translate-y-0 opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="translate-y-0 opacity-100"
-            x-transition:leave-end="translate-y-10 opacity-0"
-            class="fixed bottom-8 right-8 z-50 flex items-center gap-3 rounded-xl bg-gray-900 p-4 text-white shadow-2xl"
-            style="display:none;">
-            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-success/20 text-success">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-            </div>
-            <p class="text-sm font-medium" x-text="toast.message"></p>
-        </div>
-
     </div>{{-- /x-data --}}
 
     @push('scripts')
@@ -314,13 +296,13 @@
                         roles: []
                     },
                     errors: {},
-                    toast: {
-                        show: false,
-                        message: ''
-                    },
                     filters: {
                         search: @js($search ?? ''),
                         per_page: @js($perPage ?? 10),
+                    },
+                    messages: {
+                        invalidResponse: @js(__('administration::users.msg_invalid_response')),
+                        saveError: @js(__('administration::users.msg_save_error')),
                     },
                     confirmAction: {
                         id: null,
@@ -369,31 +351,59 @@
                         this.$dispatch('open-modal', 'user-modal');
                     },
 
+                    buildFormData() {
+                        const payload = new FormData();
+
+                        payload.append('name', this.formData.name ?? '');
+                        payload.append('email', this.formData.email ?? '');
+
+                        if (this.formData.password) {
+                            payload.append('password', this.formData.password);
+                        }
+
+                        (this.formData.roles || []).forEach((role, index) => {
+                            payload.append(`roles[${index}]`, role);
+                        });
+
+                        if (this.editMode) {
+                            payload.append('_method', 'PUT');
+                        }
+
+                        return payload;
+                    },
+
                     async submitForm() {
                         this.loading = true;
                         this.errors = {};
                         const url = this.editMode ? `/administration/users/${this.formData.id}` : '/administration/users';
-                        const method = this.editMode ? 'PUT' : 'POST';
                         try {
                             const response = await fetch(url, {
-                                method,
+                                method: 'POST',
                                 headers: {
-                                    'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                                     'Accept': 'application/json',
                                 },
-                                body: JSON.stringify(this.formData),
+                                body: this.buildFormData(),
                             });
-                            const data = await response.json();
+
+                            const contentType = response.headers.get('content-type') || '';
+                            const data = contentType.includes('application/json')
+                                ? await response.json()
+                                : { message: this.messages.invalidResponse };
+
                             if (response.ok) {
                                 this.$dispatch('close-modal', 'user-modal');
-                                this.showToast(data.message);
+                                this.notify(data.message);
                                 setTimeout(() => window.location.reload(), 1000);
                             } else {
                                 this.errors = data.errors || {};
+                                if (data.message && Object.keys(this.errors).length === 0) {
+                                    this.notify(data.message, 'warning');
+                                }
                             }
                         } catch (e) {
                             console.error(e);
+                            this.notify(this.messages.saveError, 'danger');
                         } finally {
                             this.loading = false;
                         }
@@ -419,7 +429,7 @@
                             const data = await response.json();
                             if (response.ok) {
                                 this.$dispatch('close-modal', 'confirm-disable');
-                                this.showToast(data.message);
+                                this.notify(data.message);
                                 setTimeout(() => window.location.reload(), 1000);
                             }
                         } catch (e) {
@@ -438,7 +448,7 @@
                             });
                             const data = await response.json();
                             if (response.ok) {
-                                this.showToast(data.message);
+                                this.notify(data.message);
                                 setTimeout(() => window.location.reload(), 500);
                             }
                         } catch (e) {
@@ -446,10 +456,8 @@
                         }
                     },
 
-                    showToast(msg) {
-                        this.toast.message = msg;
-                        this.toast.show = true;
-                        setTimeout(() => this.toast.show = false, 3000);
+                    notify(message, type = 'success') {
+                        window.dispatchToast({ type, message });
                     },
                 };
             }

@@ -16,14 +16,15 @@ class RoleController extends Controller
         $perPage = $request->input('per_page', 10);
 
         $roles = Role::query()
+            ->with('permissions')
             ->when($search, function ($query, $search) {
                 return $query->where('name', 'like', "%{$search}%");
             })
-            ->with('permissions')
+            ->latest()
             ->paginate($perPage)
             ->appends($request->query());
 
-        $permissions = Permission::all();
+        $permissions = Permission::query()->orderBy('name')->get();
 
         return view('administration::roles.index', compact('roles', 'permissions', 'search', 'perPage'));
     }
@@ -44,8 +45,8 @@ class RoleController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Rol creado exitosamente',
-            'role' => $role
+            'message' => __('administration::roles.msg_created'),
+            'role' => $role->load('permissions'),
         ]);
     }
 
@@ -64,8 +65,8 @@ class RoleController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Rol actualizado exitosamente',
-            'role' => $role
+            'message' => __('administration::roles.msg_updated'),
+            'role' => $role->load('permissions'),
         ]);
     }
 
@@ -74,7 +75,7 @@ class RoleController extends Controller
         if ($role->name === 'Super Admin') {
             return response()->json([
                 'success' => false,
-                'message' => 'No se puede eliminar el rol Super Admin'
+                'message' => __('administration::roles.msg_delete_forbidden'),
             ], 403);
         }
 
@@ -82,7 +83,7 @@ class RoleController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Rol eliminado exitosamente'
+            'message' => __('administration::roles.msg_deleted'),
         ]);
     }
 }

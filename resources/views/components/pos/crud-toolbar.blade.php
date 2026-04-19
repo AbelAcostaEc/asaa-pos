@@ -3,16 +3,16 @@
     'subtitle' => null,
 ])
 
-<div class="flex items-center justify-between">
+<div class="app-shell-panel flex flex-col gap-4 rounded-[28px] px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6">
     <div>
-        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">{{ $title }}</h2>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">Workspace</p>
+        <h2 class="mt-2 text-xl font-black tracking-tight text-slate-900 dark:text-white">{{ $title }}</h2>
         @if($subtitle)
-            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $subtitle }}</p>
+            <p class="mt-1 text-sm app-shell-muted">{{ $subtitle }}</p>
         @endif
     </div>
 
-    {{-- Slot: primary action button --}}
     @if($slot->isNotEmpty())
-        <div>{{ $slot }}</div>
+        <div class="flex shrink-0 items-center">{{ $slot }}</div>
     @endif
 </div>

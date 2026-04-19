@@ -3,11 +3,11 @@
 namespace Modules\Administration\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Modules\Administration\Models\User;
 
 class UserController extends Controller
 {
@@ -17,6 +17,7 @@ class UserController extends Controller
         $perPage = $request->input('per_page', 10);
 
         $users = User::query()
+            ->with('roles')
             ->when($search, function ($query, $search) {
                 return $query->where('name', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%");
