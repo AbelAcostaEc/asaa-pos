@@ -203,6 +203,10 @@
                 errors: {},
                 categories: @json($categories),
                 units: @json($units),
+                filters: {
+                    search: '',
+                    per_page: 10,
+                },
                 formData: {},
                 init() {
                     this.resetFormData();
@@ -234,6 +238,9 @@
                 resetFormData() {
                     this.formData = this.buildEmptyFormData();
                 },
+                applyFilters() {
+                    // Placeholder for filtering logic
+                },
                 openCreateModal() {
                     this.editingId = null;
                     this.errors = {};
@@ -258,7 +265,6 @@
                             unit_id: data.product.unit_id,
                             price: data.product.price,
                             image: data.product.image
-                        });
                         });
                         this.$dispatch('open-modal', 'product-modal');
                     } catch (error) {
