@@ -338,17 +338,40 @@
                         this.$dispatch('open-modal', 'user-modal');
                     },
 
-                    openEditModal(user) {
+                    async openEditModal(user) {
+                        this.loading = true;
                         this.editMode = true;
-                        this.formData = {
-                            id: user.id,
-                            name: user.name,
-                            email: user.email,
-                            password: '',
-                            roles: user.roles ? user.roles.map(r => r.name) : []
-                        };
                         this.errors = {};
-                        this.$dispatch('open-modal', 'user-modal');
+
+                        try {
+                            const response = await fetch(`/administration/users/${user.id}`, {
+                                method: 'GET',
+                                headers: {
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                },
+                            });
+
+                            const data = await response.json();
+
+                            if (response.ok) {
+                                this.formData = {
+                                    id: data.user.id,
+                                    name: data.user.name,
+                                    email: data.user.email,
+                                    password: '',
+                                    roles: data.user.roles ? data.user.roles.map(r => r.name) : []
+                                };
+                                this.$dispatch('open-modal', 'user-modal');
+                            } else {
+                                this.notify(data.message || '{{ __('administration::users.msg_save_error') }}', 'danger');
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            this.notify('{{ __('administration::users.msg_save_error') }}', 'danger');
+                        } finally {
+                            this.loading = false;
+                        }
                     },
 
                     buildFormData() {

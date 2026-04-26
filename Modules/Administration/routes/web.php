@@ -11,6 +11,7 @@ Route::middleware(['auth', 'verified'])->prefix('administration')->name('adminis
     // User CRUD
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::post('users', [UserController::class, 'store'])->name('users.store');
+    Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
     Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::patch('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
 

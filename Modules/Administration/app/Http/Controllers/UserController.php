@@ -58,6 +58,16 @@ class UserController extends Controller
         ]);
     }
 
+    public function show(User $user)
+    {
+        $user->load('roles');
+
+        return response()->json([
+            'success' => true,
+            'user' => $user
+        ]);
+    }
+
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
