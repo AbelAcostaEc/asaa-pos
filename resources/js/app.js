@@ -1,9 +1,11 @@
 import Alpine from 'alpinejs';
+import roleCrud from './modules/roles/roleCrud';
 import userCrud from './modules/users/userCrud';
 
 window.Alpine = Alpine;
 
 document.addEventListener('alpine:init', () => {
+    Alpine.data('roleCrud', roleCrud);
     Alpine.data('userCrud', userCrud);
 
     Alpine.store('toast', {

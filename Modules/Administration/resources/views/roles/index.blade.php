@@ -1,7 +1,45 @@
 <x-pos-layout>
     <x-slot name="header">{{ __('administration::roles.page_title') }}</x-slot>
 
-    <div x-data="roleCrud()" class="space-y-6">
+    <div
+        x-data="roleCrud({
+            filters: {
+                search: @js($search ?? ''),
+                per_page: @js($perPage ?? 10),
+            },
+            messages: {
+                invalidResponse: @js(__('administration::roles.msg_invalid_response')),
+                saveError: @js(__('administration::roles.msg_save_error')),
+                deleteError: @js(__('administration::roles.msg_delete_error')),
+            },
+            endpoints: {
+                collection: @js(route('administration.roles.store')),
+                resource: @js(url('administration/roles')),
+            },
+            labels: {
+                noPermissions: @js(__('administration::roles.permission_none')),
+                protected: @js(__('administration::roles.badge_protected')),
+            },
+            permissionsLabelTemplates: {
+                none: @js(__('administration::roles.permission_none')),
+                single: @js(__('administration::roles.permission_single_selected')),
+                multiple: @js(__('administration::roles.permission_selected', ['count' => '__count__'])),
+            },
+            permissionCountTemplates: {
+                none: @js(trans_choice('administration::roles.permissions_count', 0, ['count' => 0])),
+                single: @js(trans_choice('administration::roles.permissions_count', 1, ['count' => '__count__'])),
+                multiple: @js(trans_choice('administration::roles.permissions_count', 2, ['count' => '__count__'])),
+            },
+            initialRoles: @js(
+                $roles->map(fn($role) => [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'permissions' => $role->permissions->pluck('name')->values()->all(),
+                    'isProtected' => $role->name === 'Super Admin',
+                ])->values()->all()
+            ),
+        })"
+        class="space-y-6">
 
         {{-- ── Toolbar ─────────────────────────────────────────────── --}}
         <x-pos.crud-toolbar
@@ -33,25 +71,25 @@
                     __('administration::roles.col_actions'),
                 ]">
                     @forelse($roles as $role)
-                        <tr class="transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
+                        <tr x-show="roleExists({{ $role->id }})" class="transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
                             <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
                                 #{{ $role->id }}
                             </td>
                             <td class="whitespace-nowrap px-6 py-4">
-                                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $role->name }}</div>
+                                <div class="text-sm font-medium text-gray-900 dark:text-white" x-text="roleName({{ $role->id }})"></div>
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-wrap gap-1">
-                                    @foreach($role->permissions->take(5) as $perm)
-                                        <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                                            {{ $perm->name }}
-                                        </span>
-                                    @endforeach
-                                    @if($role->permissions->count() > 5)
-                                        <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
-                                            +{{ $role->permissions->count() - 5 }}
-                                        </span>
-                                    @endif
+                                    <template x-if="!roleHasPermissions({{ $role->id }})">
+                                        <span class="text-sm text-gray-400 dark:text-gray-500" x-text="labels.noPermissions"></span>
+                                    </template>
+                                    <template x-for="permission in rolePreviewPermissions({{ $role->id }}, 5)" :key="'desktop-role-{{ $role->id }}-' + permission">
+                                        <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10" x-text="permission"></span>
+                                    </template>
+                                    <template x-if="roleExtraPermissionsCount({{ $role->id }}, 5) > 0">
+                                        <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10"
+                                            x-text="'+' + roleExtraPermissionsCount({{ $role->id }}, 5)"></span>
+                                    </template>
                                 </div>
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
@@ -59,7 +97,7 @@
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-left text-sm font-medium">
                                 <div class="flex gap-3">
-                                    <button @click="openEditModal(@js($role))"
+                                    <button @click="openEditModal({{ $role->id }})"
                                             class="text-primary transition-colors hover:text-primary/80"
                                             title="{{ __('common.edit') }}">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -103,10 +141,10 @@
             @else
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                     @foreach ($roles as $role)
-                        <div class="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
+                        <div x-show="roleExists({{ $role->id }})" class="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <p class="text-sm font-semibold leading-tight text-gray-900 dark:text-white">{{ $role->name }}</p>
+                                    <p class="text-sm font-semibold leading-tight text-gray-900 dark:text-white" x-text="roleName({{ $role->id }})"></p>
                                     <p class="text-xs text-gray-400 dark:text-gray-500">#{{ $role->id }}</p>
                                 </div>
                                 @if($role->name === 'Super Admin')
@@ -123,28 +161,22 @@
                                             {{ __('administration::roles.field_permissions') }}
                                         </span>
                                         <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">
-                                            {{ trans_choice('administration::roles.permissions_count', $role->permissions->count(), ['count' => $role->permissions->count()]) }}
+                                            <span x-text="rolePermissionsCountLabel({{ $role->id }})"></span>
                                         </span>
                                     </div>
 
-                                    @if($role->permissions->isEmpty())
-                                        <p class="text-sm text-gray-400 dark:text-gray-500">
-                                            {{ __('administration::roles.permission_none') }}
-                                        </p>
-                                    @else
-                                        <div class="flex flex-wrap gap-1">
-                                            @foreach($role->permissions->take(4) as $perm)
-                                                <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                                                    {{ $perm->name }}
-                                                </span>
-                                            @endforeach
-                                            @if($role->permissions->count() > 4)
-                                                <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
-                                                    +{{ $role->permissions->count() - 4 }}
-                                                </span>
-                                            @endif
-                                        </div>
-                                    @endif
+                                    <template x-if="!roleHasPermissions({{ $role->id }})">
+                                        <p class="text-sm text-gray-400 dark:text-gray-500" x-text="labels.noPermissions"></p>
+                                    </template>
+                                    <div class="flex flex-wrap gap-1" x-show="roleHasPermissions({{ $role->id }})">
+                                        <template x-for="permission in rolePreviewPermissions({{ $role->id }}, 4)" :key="'mobile-role-{{ $role->id }}-' + permission">
+                                            <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10" x-text="permission"></span>
+                                        </template>
+                                        <template x-if="roleExtraPermissionsCount({{ $role->id }}, 4) > 0">
+                                            <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10"
+                                                x-text="'+' + roleExtraPermissionsCount({{ $role->id }}, 4)"></span>
+                                        </template>
+                                    </div>
                                 </div>
 
                                 <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
@@ -156,7 +188,7 @@
                             </div>
 
                             <div class="mt-auto flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-                                <button @click="openEditModal(@js($role))"
+                                <button @click="openEditModal({{ $role->id }})"
                                         class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/20">
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -270,157 +302,4 @@
         </x-pos.modal>
 
     </div>
-
-    @push('scripts')
-        <script>
-            function roleCrud() {
-                return {
-                    editMode: false,
-                    loading: false,
-                    formData: { id: null, name: '', permissions: [] },
-                    errors: {},
-                    filters: {
-                        search: @js($search ?? ''),
-                        per_page: @js($perPage ?? 10),
-                    },
-                    messages: {
-                        invalidResponse: @js(__('administration::roles.msg_invalid_response')),
-                        saveError: @js(__('administration::roles.msg_save_error')),
-                        deleteError: @js(__('administration::roles.msg_delete_error')),
-                    },
-                    deleteId: null,
-
-                    init() {
-                        this.$watch('filters.search', (val) => {
-                            clearTimeout(this._searchTimer);
-                            this._searchTimer = setTimeout(() => this.applyFilters(), 600);
-                        });
-                    },
-
-                    applyFilters() {
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('search', this.filters.search);
-                        url.searchParams.set('per_page', this.filters.per_page);
-                        url.searchParams.set('page', 1);
-                        window.location.href = url.toString();
-                    },
-
-                    openCreateModal() {
-                        this.editMode = false;
-                        this.formData = { id: null, name: '', permissions: [] };
-                        this.errors = {};
-                        this.$dispatch('open-modal', 'role-modal');
-                    },
-
-                    openEditModal(role) {
-                        this.editMode = true;
-                        this.formData = {
-                            id: role.id,
-                            name: role.name,
-                            permissions: role.permissions.map(p => p.name)
-                        };
-                        this.errors = {};
-                        this.$dispatch('open-modal', 'role-modal');
-                    },
-
-                    selectedPermissionsLabel() {
-                        const count = this.formData.permissions?.length || 0;
-
-                        if (count === 0) {
-                            return @js(__('administration::roles.permission_none'));
-                        }
-
-                        return count === 1
-                            ? @js(__('administration::roles.permission_single_selected'))
-                            : @js(__('administration::roles.permission_selected', ['count' => '__count__'])).replace('__count__', count);
-                    },
-
-                    buildFormData() {
-                        const payload = new FormData();
-
-                        payload.append('name', this.formData.name ?? '');
-
-                        (this.formData.permissions || []).forEach((permission, index) => {
-                            payload.append(`permissions[${index}]`, permission);
-                        });
-
-                        if (this.editMode) {
-                            payload.append('_method', 'PUT');
-                        }
-
-                        return payload;
-                    },
-
-                    async submitForm() {
-                        this.loading = true;
-                        this.errors = {};
-                        const url = this.editMode ? `/administration/roles/${this.formData.id}` : '/administration/roles';
-                        try {
-                            const response = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                    'Accept': 'application/json',
-                                },
-                                body: this.buildFormData(),
-                            });
-
-                            const contentType = response.headers.get('content-type') || '';
-                            const data = contentType.includes('application/json')
-                                ? await response.json()
-                                : { message: this.messages.invalidResponse };
-
-                            if (response.ok) {
-                                this.$dispatch('close-modal', 'role-modal');
-                                this.notify(data.message);
-                                setTimeout(() => window.location.reload(), 1000);
-                            } else {
-                                this.errors = data.errors || {};
-                                if (data.message && Object.keys(this.errors).length === 0) {
-                                    this.notify(data.message, 'warning');
-                                }
-                            }
-                        } catch (e) {
-                            console.error(e);
-                            this.notify(this.messages.saveError, 'danger');
-                        } finally {
-                            this.loading = false;
-                        }
-                    },
-
-                    confirmDelete(id) {
-                        this.deleteId = id;
-                        this.$dispatch('open-modal', 'confirm-delete');
-                    },
-
-                    async executeDelete() {
-                        try {
-                            const response = await fetch(`/administration/roles/${this.deleteId}`, {
-                                method: 'DELETE',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                    'Accept': 'application/json',
-                                },
-                            });
-                            const data = await response.json();
-                            if (response.ok) {
-                                this.$dispatch('close-modal', 'confirm-delete');
-                                this.notify(data.message);
-                                setTimeout(() => window.location.reload(), 1000);
-                            } else {
-                                this.notify(data.message || this.messages.deleteError, 'danger');
-                            }
-                        } catch (e) {
-                            console.error(e);
-                            this.notify(this.messages.deleteError, 'danger');
-                        }
-                    },
-
-                    notify(message, type = 'success') {
-                        window.dispatchToast({ type, message });
-                    },
-                };
-            }
-        </script>
-    @endpush
 </x-pos-layout>

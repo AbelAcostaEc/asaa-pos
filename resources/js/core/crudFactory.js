@@ -43,6 +43,7 @@ export function createCrudFactory(config = {}) {
         createEmptyForm,
         mapDetailToForm,
         buildPayload,
+        getEditData = null,
         initialItemsById = {},
         filters = {},
         messages = {},
@@ -50,6 +51,7 @@ export function createCrudFactory(config = {}) {
         behavior = {},
         syncItemAfterUpdate = null,
         syncItemAfterToggle = null,
+        removeItemAfterDelete = null,
         notify = defaultNotify,
     } = config;
 
@@ -62,6 +64,7 @@ export function createCrudFactory(config = {}) {
         reloadAfterCreate: true,
         reloadAfterUpdate: false,
         reloadAfterToggle: false,
+        reloadAfterDelete: false,
         reloadDelay: 800,
         ...behavior,
     };
@@ -77,10 +80,14 @@ export function createCrudFactory(config = {}) {
             loadError: messages.loadError ?? messages.saveError ?? 'Failed to load record.',
             saveError: messages.saveError ?? 'Failed to save record.',
             toggleError: messages.toggleError ?? messages.saveError ?? 'Failed to update status.',
+            deleteError: messages.deleteError ?? 'Failed to delete record.',
         },
         confirmAction: {
             id: null,
             isActive: true,
+        },
+        deleteAction: {
+            id: null,
         },
         itemsById: { ...initialItemsById },
         _searchTimer: null,
@@ -135,9 +142,16 @@ export function createCrudFactory(config = {}) {
             this.errors = {};
 
             try {
-                const data = await api.fetchById(id, {
-                    fallbackMessage: this.messages.invalidResponse,
-                });
+                const data = typeof getEditData === 'function'
+                    ? await getEditData({
+                          id,
+                          item: this.itemsById[id],
+                          api,
+                          messages: this.messages,
+                      })
+                    : await api.fetchById(id, {
+                          fallbackMessage: this.messages.invalidResponse,
+                      });
 
                 this.formData = mapDetailToForm(data);
                 this.$dispatch('open-modal', resolvedModalNames.form);
@@ -237,6 +251,40 @@ export function createCrudFactory(config = {}) {
             } catch (error) {
                 console.error(error);
                 this.notify(resolveErrorMessage(error, this.messages.toggleError), 'danger');
+            }
+        },
+
+        confirmDelete(id) {
+            this.deleteAction = { id };
+            this.$dispatch('open-modal', resolvedModalNames.confirm);
+        },
+
+        async executeDelete() {
+            try {
+                const data = await api.deleteItem(this.deleteAction.id, {
+                    fallbackMessage: this.messages.invalidResponse,
+                });
+
+                if (typeof removeItemAfterDelete === 'function') {
+                    removeItemAfterDelete({
+                        id: this.deleteAction.id,
+                        itemsById: this.itemsById,
+                        responseData: data,
+                        instance: this,
+                    });
+                }
+
+                this.$dispatch('close-modal', resolvedModalNames.confirm);
+                this.notify(data.message);
+
+                if (resolvedBehavior.reloadAfterDelete) {
+                    this.refreshPage();
+                }
+
+                return data;
+            } catch (error) {
+                console.error(error);
+                this.notify(resolveErrorMessage(error, this.messages.deleteError), 'danger');
             }
         },
     };

@@ -72,4 +72,8 @@ export const http = {
     patch(url, options = {}) {
         return request(url, { ...options, method: 'PATCH' });
     },
+
+    delete(url, options = {}) {
+        return request(url, { ...options, method: 'DELETE' });
+    },
 };
