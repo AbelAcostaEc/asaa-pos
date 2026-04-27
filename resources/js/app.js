@@ -1,8 +1,11 @@
 import Alpine from 'alpinejs';
+import userCrud from './modules/users/userCrud';
 
 window.Alpine = Alpine;
 
 document.addEventListener('alpine:init', () => {
+    Alpine.data('userCrud', userCrud);
+
     Alpine.store('toast', {
         items: [],
 

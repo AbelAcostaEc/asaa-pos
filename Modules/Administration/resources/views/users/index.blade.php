@@ -1,7 +1,38 @@
 <x-pos-layout>
     <x-slot name="header">{{ __('administration::users.page_title') }}</x-slot>
 
-    <div x-data="userCrud()" class="space-y-6">
+    <div
+        x-data="userCrud({
+            filters: {
+                search: @js($search ?? ''),
+                per_page: @js($perPage ?? 10),
+            },
+            messages: {
+                invalidResponse: @js(__('administration::users.msg_invalid_response')),
+                saveError: @js(__('administration::users.msg_save_error')),
+            },
+            endpoints: {
+                collection: @js(route('administration.users.store')),
+                resource: @js(url('administration/users')),
+            },
+            labels: {
+                active: @js(__('common.active')),
+                inactive: @js(__('common.inactive')),
+                disabled: @js(__('common.disabled')),
+                enable: @js(__('common.enable')),
+                disable: @js(__('common.disable')),
+            },
+            initialUsers: @js(
+                $users->map(fn($user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'roles' => $user->roles->pluck('name')->values()->all(),
+                    'is_active' => $user->is_active,
+                ])->values()->all()
+            ),
+        })"
+        class="space-y-6">
 
         {{-- ── Toolbar ─────────────────────────────────────────────── --}}
         <x-pos.crud-toolbar
@@ -33,28 +64,25 @@
                             <td class="whitespace-nowrap px-6 py-4">
                                 <div class="flex items-center">
                                     <div class="mr-3 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
-                                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                                        <span x-text="userInitial({{ $user->id }})"></span>
                                     </div>
-                                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->name }}</div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white" x-text="userName({{ $user->id }})"></div>
                                 </div>
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $user->email }}
+                                <span x-text="userEmail({{ $user->id }})"></span>
                             </td>
                             <td class="whitespace-nowrap px-6 py-4">
                                 <div class="flex flex-wrap gap-1">
-                                    @if ($user->roles)
-                                        @foreach ($user->roles as $role)
-                                            <span class="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
-                                                {{ $role->name }}
-                                            </span>
-                                        @endforeach
-                                    @endif
+                                    <template x-for="role in userRoles({{ $user->id }})" :key="'desktop-role-{{ $user->id }}-' + role">
+                                        <span class="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10" x-text="role"></span>
+                                    </template>
                                 </div>
                             </td>
                             <td class="whitespace-nowrap px-6 py-4">
-                                <span class="{{ $user->is_active ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger' }} inline-flex rounded-full px-2.5 py-1 text-xs font-semibold leading-5">
-                                    {{ $user->is_active ? __('common.active') : __('common.disabled') }}
+                                <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold leading-5"
+                                    x-bind:class="userStatusBadgeClass({{ $user->id }})"
+                                    x-text="userTableStatusText({{ $user->id }})">
                                 </span>
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
@@ -62,16 +90,17 @@
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-left text-sm font-medium">
                                 <div class="flex gap-3">
-                                    <button @click="openEditModal(@js($user))"
+                                    <button @click="openEditModal({{ $user->id }})"
                                         class="text-primary transition-colors hover:text-primary/80"
                                         title="{{ __('common.edit') }}">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                     </button>
-                                    <button @click="confirmDisable({{ $user->id }}, {{ $user->is_active ? 'true' : 'false' }})"
-                                        class="{{ $user->is_active ? 'text-danger hover:text-danger/80' : 'text-success hover:text-success/80' }} transition-colors"
-                                        title="{{ $user->is_active ? __('common.disable') : __('common.enable') }}">
+                                    <button @click="confirmDisable({{ $user->id }}, userIsActive({{ $user->id }}))"
+                                        class="transition-colors"
+                                        x-bind:class="userDesktopToggleClass({{ $user->id }})"
+                                        x-bind:title="userToggleActionText({{ $user->id }})">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                         </svg>
@@ -116,15 +145,16 @@
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
                                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-base font-bold text-primary">
-                                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                                        <span x-text="userInitial({{ $user->id }})"></span>
                                     </div>
                                     <div>
-                                        <p class="text-sm font-semibold leading-tight text-gray-900 dark:text-white">{{ $user->name }}</p>
+                                        <p class="text-sm font-semibold leading-tight text-gray-900 dark:text-white" x-text="userName({{ $user->id }})"></p>
                                         <p class="text-xs text-gray-400 dark:text-gray-500">#{{ $user->id }}</p>
                                     </div>
                                 </div>
-                                <span class="{{ $user->is_active ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger' }} shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold">
-                                    {{ $user->is_active ? __('common.active') : __('common.inactive') }}
+                                <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+                                    x-bind:class="userStatusBadgeClass({{ $user->id }})"
+                                    x-text="userCardStatusText({{ $user->id }})">
                                 </span>
                             </div>
                             {{-- Body --}}
@@ -133,16 +163,12 @@
                                     <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                     </svg>
-                                    <span class="truncate">{{ $user->email }}</span>
+                                    <span class="truncate" x-text="userEmail({{ $user->id }})"></span>
                                 </div>
                                 <div class="flex flex-wrap gap-1 py-1">
-                                    @if ($user->roles)
-                                        @foreach ($user->roles as $role)
-                                            <span class="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
-                                                {{ $role->name }}
-                                            </span>
-                                        @endforeach
-                                    @endif
+                                    <template x-for="role in userRoles({{ $user->id }})" :key="'mobile-role-{{ $user->id }}-' + role">
+                                        <span class="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10" x-text="role"></span>
+                                    </template>
                                 </div>
                                 <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
                                     <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,19 +179,20 @@
                             </div>
                             {{-- Actions --}}
                             <div class="mt-auto flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-                                <button @click="openEditModal(@js($user))"
+                                <button @click="openEditModal({{ $user->id }})"
                                     class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/20">
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                     {{ __('common.edit') }}
                                 </button>
-                                <button @click="confirmDisable({{ $user->id }}, {{ $user->is_active ? 'true' : 'false' }})"
-                                    class="{{ $user->is_active ? 'bg-danger/10 text-danger hover:bg-danger/20' : 'bg-success/10 text-success hover:bg-success/20' }} flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors">
+                                <button @click="confirmDisable({{ $user->id }}, userIsActive({{ $user->id }}))"
+                                    class="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors"
+                                    x-bind:class="userMobileToggleClass({{ $user->id }})">
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                     </svg>
-                                    {{ $user->is_active ? __('common.disable') : __('common.enable') }}
+                                    <span x-text="userToggleActionText({{ $user->id }})"></span>
                                 </button>
                             </div>
                         </div>
@@ -282,208 +309,4 @@
 
     </div>{{-- /x-data --}}
 
-    @push('scripts')
-        <script>
-            function userCrud() {
-                return {
-                    editMode: false,
-                    loading: false,
-                    formData: {
-                        id: null,
-                        name: '',
-                        email: '',
-                        password: '',
-                        roles: []
-                    },
-                    errors: {},
-                    filters: {
-                        search: @js($search ?? ''),
-                        per_page: @js($perPage ?? 10),
-                    },
-                    messages: {
-                        invalidResponse: @js(__('administration::users.msg_invalid_response')),
-                        saveError: @js(__('administration::users.msg_save_error')),
-                    },
-                    confirmAction: {
-                        id: null,
-                        isActive: true
-                    },
-                    _searchTimer: null,
-
-                    init() {
-                        this.$watch('filters.search', () => {
-                            clearTimeout(this._searchTimer);
-                            this._searchTimer = setTimeout(() => this.applyFilters(), 600);
-                        });
-                    },
-
-                    applyFilters() {
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('search', this.filters.search);
-                        url.searchParams.set('per_page', this.filters.per_page);
-                        url.searchParams.set('page', 1);
-                        window.location.href = url.toString();
-                    },
-
-                    openCreateModal() {
-                        this.editMode = false;
-                        this.formData = {
-                            id: null,
-                            name: '',
-                            email: '',
-                            password: '',
-                            roles: []
-                        };
-                        this.errors = {};
-                        this.$dispatch('open-modal', 'user-modal');
-                    },
-
-                    async openEditModal(user) {
-                        this.loading = true;
-                        this.editMode = true;
-                        this.errors = {};
-
-                        try {
-                            const response = await fetch(`/administration/users/${user.id}`, {
-                                method: 'GET',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                    'Accept': 'application/json',
-                                },
-                            });
-
-                            const data = await response.json();
-
-                            if (response.ok) {
-                                this.formData = {
-                                    id: data.user.id,
-                                    name: data.user.name,
-                                    email: data.user.email,
-                                    password: '',
-                                    roles: data.user.roles ? data.user.roles.map(r => r.name) : []
-                                };
-                                this.$dispatch('open-modal', 'user-modal');
-                            } else {
-                                this.notify(data.message || '{{ __('administration::users.msg_save_error') }}', 'danger');
-                            }
-                        } catch (e) {
-                            console.error(e);
-                            this.notify('{{ __('administration::users.msg_save_error') }}', 'danger');
-                        } finally {
-                            this.loading = false;
-                        }
-                    },
-
-                    buildFormData() {
-                        const payload = new FormData();
-
-                        payload.append('name', this.formData.name ?? '');
-                        payload.append('email', this.formData.email ?? '');
-
-                        if (this.formData.password) {
-                            payload.append('password', this.formData.password);
-                        }
-
-                        (this.formData.roles || []).forEach((role, index) => {
-                            payload.append(`roles[${index}]`, role);
-                        });
-
-                        if (this.editMode) {
-                            payload.append('_method', 'PUT');
-                        }
-
-                        return payload;
-                    },
-
-                    async submitForm() {
-                        this.loading = true;
-                        this.errors = {};
-                        const url = this.editMode ? `/administration/users/${this.formData.id}` : '/administration/users';
-                        try {
-                            const response = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                    'Accept': 'application/json',
-                                },
-                                body: this.buildFormData(),
-                            });
-
-                            const contentType = response.headers.get('content-type') || '';
-                            const data = contentType.includes('application/json')
-                                ? await response.json()
-                                : { message: this.messages.invalidResponse };
-
-                            if (response.ok) {
-                                this.$dispatch('close-modal', 'user-modal');
-                                this.notify(data.message);
-                                setTimeout(() => window.location.reload(), 1000);
-                            } else {
-                                this.errors = data.errors || {};
-                                if (data.message && Object.keys(this.errors).length === 0) {
-                                    this.notify(data.message, 'warning');
-                                }
-                            }
-                        } catch (e) {
-                            console.error(e);
-                            this.notify(this.messages.saveError, 'danger');
-                        } finally {
-                            this.loading = false;
-                        }
-                    },
-
-                    confirmDisable(id, isActive) {
-                        this.confirmAction = {
-                            id,
-                            isActive
-                        };
-                        this.$dispatch('open-modal', 'confirm-disable');
-                    },
-
-                    async executeToggle() {
-                        try {
-                            const response = await fetch(`/administration/users/${this.confirmAction.id}/toggle`, {
-                                method: 'PATCH',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                    'Accept': 'application/json',
-                                },
-                            });
-                            const data = await response.json();
-                            if (response.ok) {
-                                this.$dispatch('close-modal', 'confirm-disable');
-                                this.notify(data.message);
-                                setTimeout(() => window.location.reload(), 1000);
-                            }
-                        } catch (e) {
-                            console.error(e);
-                        }
-                    },
-
-                    async toggleStatus(id) {
-                        try {
-                            const response = await fetch(`/administration/users/${id}/toggle`, {
-                                method: 'PATCH',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                    'Accept': 'application/json',
-                                },
-                            });
-                            const data = await response.json();
-                            if (response.ok) {
-                                this.notify(data.message);
-                                setTimeout(() => window.location.reload(), 500);
-                            }
-                        } catch (e) {
-                            console.error(e);
-                        }
-                    },
-
-                    notify(message, type = 'success') {
-                        window.dispatchToast({ type, message });
-                    },
-                };
-            }
-        </script>
-    @endpush
 </x-pos-layout>
